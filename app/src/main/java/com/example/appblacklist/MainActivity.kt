@@ -1,6 +1,9 @@
 package com.example.appblacklist
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -10,6 +13,7 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private lateinit var adapter: AppListAdapter
+    private var fullList: List<AppEntity> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,20 +29,42 @@ class MainActivity : AppCompatActivity() {
         }
         recyclerView.adapter = adapter
 
-        // 观察数据库变化，自动刷新列表（包括拉黑状态、卸载状态的变化）
+        // 观察数据库变化，保存完整列表并应用当前搜索关键词
         AppDatabase.getInstance(this).appDao().getAll().observe(this) { list ->
-            adapter.submitList(list)
+            fullList = list
+            applyFilter(findViewById<EditText>(R.id.etSearch).text.toString())
         }
 
-        // 首次进入扫描已安装应用，写入/更新数据库
+        // 搜索框监听输入，实时过滤
+        val etSearch = findViewById<EditText>(R.id.etSearch)
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                applyFilter(s?.toString() ?: "")
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
         lifecycleScope.launch {
             AppScanner.syncInstalledApps(this@MainActivity)
         }
     }
 
+    private fun applyFilter(keyword: String) {
+        val trimmed = keyword.trim()
+        val filtered = if (trimmed.isEmpty()) {
+            fullList
+        } else {
+            fullList.filter {
+                it.appName.contains(trimmed, ignoreCase = true) ||
+                it.packageName.contains(trimmed, ignoreCase = true)
+            }
+        }
+        adapter.submitList(filtered)
+    }
+
     override fun onResume() {
         super.onResume()
-        // 每次回到前台重新扫描一次，保证安装/卸载状态是最新的
         lifecycleScope.launch {
             AppScanner.syncInstalledApps(this@MainActivity)
         }
