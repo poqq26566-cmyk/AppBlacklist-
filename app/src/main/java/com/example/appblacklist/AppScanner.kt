@@ -1,6 +1,7 @@
 package com.example.appblacklist
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -11,24 +12,25 @@ import java.io.ByteArrayOutputStream
 
 object AppScanner {
 
-    /**
-     * 扫描本机已安装的应用，写入/更新数据库。
-     * 已经在数据库里但本次没扫描到的应用（说明被卸载了），
-     * 只将 isInstalled 置为 false，不删除记录，这样黑名单里还能继续显示。
-     */
     suspend fun syncInstalledApps(context: Context) {
         val pm = context.packageManager
         val dao = AppDatabase.getInstance(context).appDao()
 
-        val installedApps: List<ApplicationInfo> = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        // 用launcher intent查询，取到的是桌面上真正显示的名字和图标
+        val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+        val resolveInfos = pm.queryIntentActivities(launcherIntent, 0)
+
         val installedPackageNames = mutableSetOf<String>()
 
-        for (appInfo in installedApps) {
-            val pkg = appInfo.packageName
+        for (resolveInfo in resolveInfos) {
+            val pkg = resolveInfo.activityInfo.packageName
+            if (installedPackageNames.contains(pkg)) continue
             installedPackageNames.add(pkg)
 
-            val label = pm.getApplicationLabel(appInfo).toString()
-            val icon = pm.getApplicationIcon(appInfo)
+            val label = resolveInfo.loadLabel(pm).toString()
+            val icon = resolveInfo.loadIcon(pm)
             val iconBase64 = drawableToBase64(icon)
 
             val existing = dao.getByPackage(pkg)
@@ -50,7 +52,6 @@ object AppScanner {
             }
         }
 
-        // 标记数据库里那些不在本次扫描结果中的应用为“已卸载”，但保留记录（尤其是拉黑的）
         markUninstalledApps(context, installedPackageNames)
     }
 
@@ -74,7 +75,6 @@ object AppScanner {
     }
 
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
-        // 统一压缩到固定小尺寸，避免个别应用图标分辨率过大导致数据库单行超限
         val size = 96
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -82,6 +82,7 @@ object AppScanner {
         drawable.draw(canvas)
         return bitmap
     }
+
     fun base64ToBitmap(base64: String): Bitmap? {
         return try {
             val bytes = Base64.decode(base64, Base64.DEFAULT)
