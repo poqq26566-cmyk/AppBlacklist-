@@ -1,10 +1,15 @@
 package com.example.appblacklist
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.widget.Button
 import android.widget.EditText
 import android.widget.RadioGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,9 +20,29 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var adapter: AppListAdapter
     private var fullList: List<AppEntity> = emptyList()
-
-    // 0=全部 1=已拉黑 2=未拉黑
     private var filterMode = 0
+
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            lifecycleScope.launch {
+                val count = BlacklistExportImport.export(this@MainActivity, uri)
+                Toast.makeText(this@MainActivity, "已导出 $count 条黑名单记录", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            lifecycleScope.launch {
+                val count = BlacklistExportImport.import(this@MainActivity, uri)
+                Toast.makeText(this@MainActivity, "已导入 $count 条黑名单记录", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +82,14 @@ class MainActivity : AppCompatActivity() {
             applyFilter()
         }
 
+        findViewById<Button>(R.id.btnExport).setOnClickListener {
+            exportLauncher.launch("blacklist_backup.json")
+        }
+
+        findViewById<Button>(R.id.btnImport).setOnClickListener {
+            importLauncher.launch(arrayOf("application/json"))
+        }
+
         lifecycleScope.launch {
             AppScanner.syncInstalledApps(this@MainActivity)
         }
@@ -67,14 +100,12 @@ class MainActivity : AppCompatActivity() {
 
         var result = fullList
 
-        // 先按拉黑状态筛选
         result = when (filterMode) {
             1 -> result.filter { it.isBlacklisted }
             2 -> result.filter { !it.isBlacklisted }
             else -> result
         }
 
-        // 再按关键词筛选
         if (keyword.isNotEmpty()) {
             result = result.filter {
                 it.appName.contains(keyword, ignoreCase = true) ||
