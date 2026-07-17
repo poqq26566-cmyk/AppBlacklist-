@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.EditText
+import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -14,6 +15,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var adapter: AppListAdapter
     private var fullList: List<AppEntity> = emptyList()
+
+    // 0=全部 1=已拉黑 2=未拉黑
+    private var filterMode = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,38 +33,56 @@ class MainActivity : AppCompatActivity() {
         }
         recyclerView.adapter = adapter
 
-        // 观察数据库变化，保存完整列表并应用当前搜索关键词
         AppDatabase.getInstance(this).appDao().getAll().observe(this) { list ->
             fullList = list
-            applyFilter(findViewById<EditText>(R.id.etSearch).text.toString())
+            applyFilter()
         }
 
-        // 搜索框监听输入，实时过滤
         val etSearch = findViewById<EditText>(R.id.etSearch)
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                applyFilter(s?.toString() ?: "")
+                applyFilter()
             }
             override fun afterTextChanged(s: Editable?) {}
         })
+
+        val rgFilter = findViewById<RadioGroup>(R.id.rgFilter)
+        rgFilter.setOnCheckedChangeListener { _, checkedId ->
+            filterMode = when (checkedId) {
+                R.id.rbBlacklisted -> 1
+                R.id.rbNotBlacklisted -> 2
+                else -> 0
+            }
+            applyFilter()
+        }
 
         lifecycleScope.launch {
             AppScanner.syncInstalledApps(this@MainActivity)
         }
     }
 
-    private fun applyFilter(keyword: String) {
-        val trimmed = keyword.trim()
-        val filtered = if (trimmed.isEmpty()) {
-            fullList
-        } else {
-            fullList.filter {
-                it.appName.contains(trimmed, ignoreCase = true) ||
-                it.packageName.contains(trimmed, ignoreCase = true)
+    private fun applyFilter() {
+        val keyword = findViewById<EditText>(R.id.etSearch).text.toString().trim()
+
+        var result = fullList
+
+        // 先按拉黑状态筛选
+        result = when (filterMode) {
+            1 -> result.filter { it.isBlacklisted }
+            2 -> result.filter { !it.isBlacklisted }
+            else -> result
+        }
+
+        // 再按关键词筛选
+        if (keyword.isNotEmpty()) {
+            result = result.filter {
+                it.appName.contains(keyword, ignoreCase = true) ||
+                it.packageName.contains(keyword, ignoreCase = true)
             }
         }
-        adapter.submitList(filtered)
+
+        adapter.submitList(result)
     }
 
     override fun onResume() {
