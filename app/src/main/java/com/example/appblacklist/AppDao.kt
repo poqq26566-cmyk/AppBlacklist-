@@ -12,6 +12,9 @@ interface AppDao {
     @Query("SELECT * FROM app_records")
     suspend fun getAllSync(): List<AppEntity>
 
+    @Query("SELECT * FROM app_records WHERE isBlacklisted = 1")
+    suspend fun getBlacklistedSync(): List<AppEntity>
+
     @Query("SELECT * FROM app_records WHERE packageName = :pkg LIMIT 1")
     suspend fun getByPackage(pkg: String): AppEntity?
 
