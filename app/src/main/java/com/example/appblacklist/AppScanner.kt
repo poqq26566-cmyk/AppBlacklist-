@@ -68,7 +68,7 @@ object AppScanner {
     private fun drawableToBase64(drawable: Drawable): String {
         val bitmap = drawableToBitmap(drawable)
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream)
         val bytes = stream.toByteArray()
         return Base64.encodeToString(bytes, Base64.DEFAULT)
     }
