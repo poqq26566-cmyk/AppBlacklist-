@@ -74,15 +74,14 @@ object AppScanner {
     }
 
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
-        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 96
-        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 96
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        // 统一压缩到固定小尺寸，避免个别应用图标分辨率过大导致数据库单行超限
+        val size = 96
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.setBounds(0, 0, size, size)
         drawable.draw(canvas)
         return bitmap
     }
-
     fun base64ToBitmap(base64: String): Bitmap? {
         return try {
             val bytes = Base64.decode(base64, Base64.DEFAULT)
