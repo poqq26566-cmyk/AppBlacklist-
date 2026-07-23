@@ -51,11 +51,21 @@ class MainActivity : AppCompatActivity() {
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        adapter = AppListAdapter { app, checked ->
-            lifecycleScope.launch {
-                AppDatabase.getInstance(this@MainActivity).appDao().setBlacklisted(app.packageName, checked)
+        adapter = AppListAdapter(
+            onCheckChanged = { app, checked ->
+                lifecycleScope.launch {
+                    AppDatabase.getInstance(this@MainActivity).appDao()
+                        .setBlacklisted(app.packageName, checked)
+                }
+            },
+            onRemarkChanged = { app, remark ->
+                // 保存备注到数据库
+                lifecycleScope.launch {
+                    AppDatabase.getInstance(this@MainActivity).appDao()
+                        .setRemark(app.packageName, remark)
+                }
             }
-        }
+        )
         recyclerView.adapter = adapter
 
         AppDatabase.getInstance(this).appDao().getAll().observe(this) { list ->
