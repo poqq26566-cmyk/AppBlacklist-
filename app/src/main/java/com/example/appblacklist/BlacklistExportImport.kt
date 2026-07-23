@@ -19,6 +19,7 @@ object BlacklistExportImport {
             obj.put("packageName", item.packageName)
             obj.put("appName", item.appName)
             obj.put("iconBase64", item.iconBase64)
+            obj.put("remark", item.remark)   // 备注一并导出
             jsonArray.put(obj)
         }
 
@@ -45,6 +46,7 @@ object BlacklistExportImport {
             val pkg = obj.getString("packageName")
             val appName = obj.getString("appName")
             val iconBase64 = obj.getString("iconBase64")
+            val remark = if (obj.has("remark")) obj.getString("remark") else ""  // 兼容旧版导出文件
 
             val isInstalled = try {
                 pm.getApplicationInfo(pkg, 0)
@@ -61,11 +63,15 @@ object BlacklistExportImport {
                         appName = appName,
                         iconBase64 = iconBase64,
                         isBlacklisted = true,
-                        isInstalled = isInstalled
+                        isInstalled = isInstalled,
+                        remark = remark
                     )
                 )
             } else {
                 dao.setBlacklisted(pkg, true)
+                if (remark.isNotBlank()) {
+                    dao.setRemark(pkg, remark)  // 导入时若有备注则更新
+                }
             }
             count++
         }
