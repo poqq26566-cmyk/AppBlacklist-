@@ -30,6 +30,9 @@ interface AppDao {
     @Query("UPDATE app_records SET isInstalled = :installed WHERE packageName = :pkg")
     suspend fun setInstalled(pkg: String, installed: Boolean)
 
+    @Query("UPDATE app_records SET remark = :remark WHERE packageName = :pkg")
+    suspend fun setRemark(pkg: String, remark: String)
+
     @Query("DELETE FROM app_records WHERE packageName = :pkg")
     suspend fun delete(pkg: String)
 }
