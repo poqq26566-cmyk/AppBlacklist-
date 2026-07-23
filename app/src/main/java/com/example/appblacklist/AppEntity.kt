@@ -13,5 +13,6 @@ data class AppEntity(
     var appName: String,
     var iconBase64: String,      // 图标以 Base64 字符串形式持久化保存
     var isBlacklisted: Boolean = false,
-    var isInstalled: Boolean = true
+    var isInstalled: Boolean = true,
+    var remark: String = ""      // 备注，默认为空字符串
 )
