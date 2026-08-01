@@ -157,20 +157,14 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "已拉黑应用的卸载流程结束", Toast.LENGTH_SHORT).show()
             return
         }
-        val intent = Intent(Intent.ACTION_DELETE).apply {
-            data = Uri.fromParts("package", packageName, null)
+        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")).apply {
+            putExtra(Intent.EXTRA_RETURN_RESULT, true)
         }
         try {
             uninstallLauncher.launch(intent)
         } catch (e: Exception) {
-            // 用一个不会自动消失的对话框展示具体报错，而不是一闪而过的 Toast，
-            // 方便确认到底是不是真的抛异常了、抛的是什么。
-            AlertDialog.Builder(this)
-                .setTitle("卸载 $packageName 时出错")
-                .setMessage(e.toString())
-                .setPositiveButton("继续下一个") { _, _ -> triggerNextUninstall() }
-                .setNegativeButton("停止", null)
-                .show()
+            Toast.makeText(this, "无法卸载 $packageName：${e.message}", Toast.LENGTH_LONG).show()
+            triggerNextUninstall()
         }
     }
 
