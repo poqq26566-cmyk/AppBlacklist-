@@ -30,8 +30,13 @@ class MainActivity : AppCompatActivity() {
 
     private val uninstallLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        // 不管用户是确认卸载了还是取消了这一个，都继续处理队列里的下一个
+    ) { result ->
+        // resultCode: RESULT_OK(-1) 表示用户确认卸载了，RESULT_CANCELED(0) 表示取消了。
+        // 加这个提示主要是为了排查"系统卸载确认框到底有没有弹出来"这种问题。
+        when (result.resultCode) {
+            RESULT_OK -> Unit // 用户确认卸载，不用额外提示，能在列表里看到状态变化
+            RESULT_CANCELED -> Toast.makeText(this, "已取消这一个的卸载", Toast.LENGTH_SHORT).show()
+        }
         triggerNextUninstall()
     }
 
@@ -152,7 +157,9 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "已拉黑应用的卸载流程结束", Toast.LENGTH_SHORT).show()
             return
         }
-        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))
+        val intent = Intent(Intent.ACTION_DELETE).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
         try {
             uninstallLauncher.launch(intent)
         } catch (e: Exception) {
