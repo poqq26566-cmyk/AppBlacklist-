@@ -163,9 +163,14 @@ class MainActivity : AppCompatActivity() {
         try {
             uninstallLauncher.launch(intent)
         } catch (e: Exception) {
-            // 极少数系统/情况下可能没有能处理这个 Intent 的组件，跳过这一个继续下一个
-            Toast.makeText(this, "无法卸载 $packageName，已跳过", Toast.LENGTH_SHORT).show()
-            triggerNextUninstall()
+            // 用一个不会自动消失的对话框展示具体报错，而不是一闪而过的 Toast，
+            // 方便确认到底是不是真的抛异常了、抛的是什么。
+            AlertDialog.Builder(this)
+                .setTitle("卸载 $packageName 时出错")
+                .setMessage(e.toString())
+                .setPositiveButton("继续下一个") { _, _ -> triggerNextUninstall() }
+                .setNegativeButton("停止", null)
+                .show()
         }
     }
 
