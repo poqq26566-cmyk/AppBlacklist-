@@ -41,36 +41,55 @@
         android:background="#F0F0F0"
         android:layout_margin="8dp" />
 
-    <RadioGroup
-        android:id="@+id/rgFilter"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:layout_marginStart="8dp"
         android:layout_marginBottom="4dp">
 
-        <RadioButton
-            android:id="@+id/rbAll"
+        <RadioGroup
+            android:id="@+id/rgFilter"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbAll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="全部"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/rbBlacklisted"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="已拉黑" />
+
+            <RadioButton
+                android:id="@+id/rbNotBlacklisted"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="未拉黑" />
+
+        </RadioGroup>
+
+        <Button
+            android:id="@+id/btnUninstallBlacklisted"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="全部"
-            android:checked="true" />
+            android:layout_marginEnd="8dp"
+            android:text="卸载已拉黑"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#E53935" />
 
-        <RadioButton
-            android:id="@+id/rbBlacklisted"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="已拉黑" />
-
-        <RadioButton
-            android:id="@+id/rbNotBlacklisted"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="未拉黑" />
-
-    </RadioGroup>
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"

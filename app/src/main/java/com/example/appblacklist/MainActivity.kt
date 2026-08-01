@@ -10,6 +10,7 @@ import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -21,6 +22,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: AppListAdapter
     private var fullList: List<AppEntity> = emptyList()
     private var filterMode = 0
+
+    // 系统不允许第三方 App 静默批量卸载，只能一个一个弹系统确认框；
+    // 这个队列记录还剩哪些包名没处理，每次用户确认/取消一个卸载弹窗后，
+    // 自动继续弹下一个，实现"连续卸载"的体验。
+    private val uninstallQueue = ArrayDeque<String>()
+
+    private val uninstallLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        // 不管用户是确认卸载了还是取消了这一个，都继续处理队列里的下一个
+        triggerNextUninstall()
+    }
 
     private val exportLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -100,8 +113,52 @@ class MainActivity : AppCompatActivity() {
             importLauncher.launch(arrayOf("application/json"))
         }
 
+        findViewById<Button>(R.id.btnUninstallBlacklisted).setOnClickListener {
+            startUninstallBlacklisted()
+        }
+
         lifecycleScope.launch {
             AppScanner.syncInstalledApps(this@MainActivity)
+        }
+    }
+
+    private fun startUninstallBlacklisted() {
+        // 只卸载"已拉黑 且 当前确实还装着"的应用，已经卸载过的记录不需要再处理
+        val targets = fullList.filter { it.isBlacklisted && it.isInstalled }
+        if (targets.isEmpty()) {
+            Toast.makeText(this, "没有已安装的拉黑应用", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("卸载已拉黑的应用")
+            .setMessage(
+                "共 ${targets.size} 个已拉黑的应用当前已安装。\n" +
+                    "系统不允许一次性静默卸载，需要对每个应用逐一确认，" +
+                    "接下来会连续弹出 ${targets.size} 次系统卸载确认框，确定要开始吗？"
+            )
+            .setPositiveButton("开始卸载") { _, _ ->
+                uninstallQueue.clear()
+                uninstallQueue.addAll(targets.map { it.packageName })
+                triggerNextUninstall()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun triggerNextUninstall() {
+        val packageName = uninstallQueue.removeFirstOrNull()
+        if (packageName == null) {
+            Toast.makeText(this, "已拉黑应用的卸载流程结束", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))
+        try {
+            uninstallLauncher.launch(intent)
+        } catch (e: Exception) {
+            // 极少数系统/情况下可能没有能处理这个 Intent 的组件，跳过这一个继续下一个
+            Toast.makeText(this, "无法卸载 $packageName，已跳过", Toast.LENGTH_SHORT).show()
+            triggerNextUninstall()
         }
     }
 
