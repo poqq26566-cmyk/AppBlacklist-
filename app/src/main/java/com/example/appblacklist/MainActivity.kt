@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.Toast
@@ -22,6 +23,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: AppListAdapter
     private var fullList: List<AppEntity> = emptyList()
     private var filterMode = 0
+    private var showSystemApps = false
+
+    // 用来记住"是否显示系统应用"这个开关的状态，下次打开App时保持一致
+    private val prefs by lazy { getSharedPreferences("app_blacklist_prefs", MODE_PRIVATE) }
 
     // 系统不允许第三方 App 静默批量卸载，只能一个一个弹系统确认框；
     // 这个队列记录还剩哪些包名没处理，每次用户确认/取消一个卸载弹窗后，
@@ -110,6 +115,15 @@ class MainActivity : AppCompatActivity() {
             applyFilter()
         }
 
+        val cbShowSystemApps = findViewById<CheckBox>(R.id.cbShowSystemApps)
+        showSystemApps = prefs.getBoolean("show_system_apps", false)
+        cbShowSystemApps.isChecked = showSystemApps
+        cbShowSystemApps.setOnCheckedChangeListener { _, isChecked ->
+            showSystemApps = isChecked
+            prefs.edit().putBoolean("show_system_apps", isChecked).apply()
+            applyFilter()
+        }
+
         findViewById<Button>(R.id.btnExport).setOnClickListener {
             exportLauncher.launch("blacklist_backup.json")
         }
@@ -172,6 +186,10 @@ class MainActivity : AppCompatActivity() {
         val keyword = findViewById<EditText>(R.id.etSearch).text.toString().trim()
 
         var result = fullList
+
+        if (!showSystemApps) {
+            result = result.filter { !it.isSystemApp }
+        }
 
         result = when (filterMode) {
             1 -> result.filter { it.isBlacklisted }
