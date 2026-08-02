@@ -14,5 +14,6 @@ data class AppEntity(
     var iconBase64: String,      // 图标以 Base64 字符串形式持久化保存
     var isBlacklisted: Boolean = false,
     var isInstalled: Boolean = true,
-    var remark: String = ""      // 备注，默认为空字符串
+    var remark: String = "",     // 备注，默认为空字符串
+    var isSystemApp: Boolean = false // 是否为系统应用/系统组件（含无桌面图标的系统服务）
 )
